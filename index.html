@@ -1,0 +1,1378 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>Dashagames</title>
+<script src="https://telegram.org/js/telegram-web-app.js"></script>
+<style>
+  /* ===== ОБЩИЕ СТИЛИ ===== */
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    overflow: hidden;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    background: #2c2c3a;
+    color: #e0d8c8;
+    touch-action: none;
+    -webkit-tap-highlight-color: transparent;
+    user-select: none;
+  }
+
+  /* ===== ЭКРАНЫ ===== */
+  .screen {
+    display: none;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    width: 100vw;
+    height: 100vh;
+    position: absolute;
+    top: 0; left: 0;
+  }
+  .screen.active { display: flex; }
+
+  /* ===== ГЛАВНОЕ МЕНЮ ===== */
+  #menuScreen {
+    background: linear-gradient(135deg, #3a3a50 0%, #2c2c3a 50%, #353548 100%);
+  }
+  .game-title {
+    font-size: 42px;
+    font-weight: 800;
+    color: #c8b89a;
+    text-shadow: 0 2px 10px rgba(0,0,0,0.3);
+    margin-bottom: 8px;
+    letter-spacing: 3px;
+  }
+  .game-subtitle {
+    font-size: 14px;
+    color: #8a7e6b;
+    margin-bottom: 40px;
+    letter-spacing: 1px;
+  }
+  .menu-btn {
+    width: 260px;
+    padding: 14px 0;
+    margin: 6px 0;
+    border: none;
+    border-radius: 16px;
+    font-size: 17px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    letter-spacing: 0.5px;
+  }
+  .menu-btn:active { transform: scale(0.96); }
+  .btn-play {
+    background: linear-gradient(135deg, #7a9a6d, #5d7a52);
+    color: #fff;
+    box-shadow: 0 4px 15px rgba(122,154,109,0.3);
+  }
+  .btn-secondary {
+    background: rgba(255,255,255,0.08);
+    color: #c8b89a;
+    border: 1px solid rgba(200,184,154,0.15);
+  }
+  .btn-locked {
+    background: rgba(255,255,255,0.04);
+    color: #5a5560;
+    border: 1px solid rgba(255,255,255,0.06);
+    position: relative;
+  }
+  .btn-locked::after {
+    content: '🔒';
+    position: absolute;
+    right: 16px;
+    top: 50%;
+    transform: translateY(-50%);
+    font-size: 16px;
+  }
+  .menu-record {
+    margin-top: 20px;
+    font-size: 14px;
+    color: #6a6070;
+  }
+  .menu-record span { color: #c8b89a; font-weight: 700; }
+
+  /* ===== ЭКРАН ИГРЫ ===== */
+  #gameScreen { background: #2c2c3a; }
+  #gameCanvas {
+    width: 100%;
+    height: 100%;
+    display: block;
+  }
+  #gameUI {
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    padding: 12px 16px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    pointer-events: none;
+    z-index: 10;
+  }
+  .score-display {
+    font-size: 22px;
+    font-weight: 700;
+    color: #fff;
+    text-shadow: 0 1px 6px rgba(0,0,0,0.4);
+  }
+  .pause-btn {
+    pointer-events: all;
+    background: rgba(255,255,255,0.12);
+    border: none;
+    color: #fff;
+    width: 40px; height: 40px;
+    border-radius: 12px;
+    font-size: 18px;
+    cursor: pointer;
+    backdrop-filter: blur(10px);
+  }
+  .powerup-display {
+    position: absolute;
+    top: 60px; left: 50%;
+    transform: translateX(-50%);
+    font-size: 16px;
+    color: #f0e68c;
+    text-shadow: 0 1px 4px rgba(0,0,0,0.4);
+    pointer-events: none;
+    z-index: 10;
+    opacity: 0;
+    transition: opacity 0.3s;
+  }
+  .powerup-display.show { opacity: 1; }
+
+  /* ===== ЭКРАН GAME OVER ===== */
+  #gameOverScreen {
+    background: rgba(30,30,42,0.95);
+    backdrop-filter: blur(10px);
+  }
+  .go-title {
+    font-size: 36px;
+    color: #c8b89a;
+    margin-bottom: 10px;
+  }
+  .go-score {
+    font-size: 52px;
+    font-weight: 800;
+    color: #fff;
+    margin-bottom: 6px;
+  }
+  .go-best {
+    font-size: 15px;
+    color: #8a7e6b;
+    margin-bottom: 30px;
+  }
+  .go-best span { color: #7a9a6d; font-weight: 700; }
+
+  /* ===== ЭКРАН ТОП-10 ===== */
+  #top10Screen {
+    background: linear-gradient(135deg, #3a3a50, #2c2c3a);
+    padding: 20px;
+  }
+  .screen-header {
+    display: flex;
+    align-items: center;
+    width: 100%;
+    max-width: 360px;
+    margin-bottom: 20px;
+  }
+  .back-btn {
+    background: rgba(255,255,255,0.1);
+    border: none;
+    color: #c8b89a;
+    width: 40px; height: 40px;
+    border-radius: 12px;
+    font-size: 20px;
+    cursor: pointer;
+    margin-right: 14px;
+  }
+  .screen-title {
+    font-size: 24px;
+    font-weight: 700;
+    color: #c8b89a;
+  }
+  .top10-list {
+    width: 100%;
+    max-width: 360px;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+  .top10-item {
+    display: flex;
+    align-items: center;
+    padding: 12px 16px;
+    background: rgba(255,255,255,0.06);
+    border-radius: 14px;
+    gap: 12px;
+  }
+  .top10-item.is-you {
+    background: rgba(122,154,109,0.15);
+    border: 1px solid rgba(122,154,109,0.3);
+  }
+  .top10-rank {
+    font-size: 18px;
+    font-weight: 800;
+    color: #6a6070;
+    width: 30px;
+    text-align: center;
+  }
+  .top10-item:nth-child(1) .top10-rank { color: #f0c040; }
+  .top10-item:nth-child(2) .top10-rank { color: #b0b0b0; }
+  .top10-item:nth-child(3) .top10-rank { color: #cd7f32; }
+  .top10-name {
+    flex: 1;
+    font-size: 15px;
+    color: #d0c8b8;
+  }
+  .top10-score {
+    font-size: 15px;
+    font-weight: 700;
+    color: #7a9a6d;
+  }
+  .top10-empty {
+    text-align: center;
+    color: #5a5560;
+    font-size: 15px;
+    margin-top: 40px;
+  }
+
+  /* ===== ЭКРАН СКИНОВ ===== */
+  #skinsScreen {
+    background: linear-gradient(135deg, #3a3a50, #2c2c3a);
+    padding: 20px;
+  }
+  .skins-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 14px;
+    max-width: 360px;
+    width: 100%;
+    margin-top: 10px;
+  }
+  .skin-card {
+    aspect-ratio: 1;
+    background: rgba(255,255,255,0.06);
+    border-radius: 16px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    border: 2px solid transparent;
+    transition: all 0.2s;
+  }
+  .skin-card.selected {
+    border-color: #7a9a6d;
+    background: rgba(122,154,109,0.12);
+  }
+  .skin-card.locked {
+    opacity: 0.4;
+  }
+  .skin-emoji { font-size: 36px; margin-bottom: 6px; }
+  .skin-name { font-size: 11px; color: #8a7e6b; }
+
+  /* ===== НАСТРОЙКИ ===== */
+  #settingsScreen {
+    background: linear-gradient(135deg, #3a3a50, #2c2c3a);
+    padding: 20px;
+  }
+  .settings-group {
+    width: 100%;
+    max-width: 360px;
+    margin-bottom: 20px;
+  }
+  .settings-label {
+    font-size: 14px;
+    color: #8a7e6b;
+    margin-bottom: 8px;
+    margin-left: 4px;
+  }
+  .slider-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    background: rgba(255,255,255,0.06);
+    padding: 12px 16px;
+    border-radius: 14px;
+    margin-bottom: 8px;
+  }
+  .slider-icon { font-size: 20px; }
+  .slider-row input[type="range"] {
+    flex: 1;
+    -webkit-appearance: none;
+    height: 6px;
+    border-radius: 3px;
+    background: rgba(255,255,255,0.1);
+    outline: none;
+  }
+  .slider-row input[type="range"]::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    width: 22px; height: 22px;
+    border-radius: 50%;
+    background: #7a9a6d;
+    cursor: pointer;
+  }
+  .slider-val {
+    font-size: 14px;
+    color: #c8b89a;
+    min-width: 35px;
+    text-align: right;
+  }
+  .bg-selector {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+  }
+  .bg-option {
+    width: 50px; height: 50px;
+    border-radius: 12px;
+    border: 2px solid transparent;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+  .bg-option.active { border-color: #7a9a6d; }
+  .setting-switch {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    background: rgba(255,255,255,0.06);
+    padding: 12px 16px;
+    border-radius: 14px;
+    margin-bottom: 8px;
+  }
+  .switch-label { font-size: 15px; color: #d0c8b8; }
+  .switch-toggle {
+    width: 48px; height: 26px;
+    background: rgba(255,255,255,0.1);
+    border-radius: 13px;
+    position: relative;
+    cursor: pointer;
+    transition: background 0.3s;
+  }
+  .switch-toggle.on { background: #7a9a6d; }
+  .switch-toggle::after {
+    content: '';
+    position: absolute;
+    width: 22px; height: 22px;
+    border-radius: 50%;
+    background: #fff;
+    top: 2px; left: 2px;
+    transition: transform 0.3s;
+  }
+  .switch-toggle.on::after { transform: translateX(22px); }
+
+  /* ===== ПАУЗА ===== */
+  #pauseOverlay {
+    display: none;
+    position: absolute;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background: rgba(30,30,42,0.85);
+    backdrop-filter: blur(6px);
+    z-index: 20;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+  }
+  #pauseOverlay.active { display: flex; }
+  .pause-title {
+    font-size: 32px;
+    color: #c8b89a;
+    margin-bottom: 30px;
+  }
+</style>
+</head>
+<body>
+
+<!-- ===== ГЛАВНОЕ МЕНЮ ===== -->
+<div id="menuScreen" class="screen active">
+  <div class="game-title">DASHAGAMES</div>
+  <div class="game-subtitle">Беги. Уворачивайся. Побеждай.</div>
+  <button class="menu-btn btn-play" onclick="startGame()">▶ Играть</button>
+  <button class="menu-btn btn-secondary" onclick="showScreen('top10Screen')">🏆 Топ-10</button>
+  <button class="menu-btn btn-secondary" onclick="showScreen('skinsScreen')">👕 Скины</button>
+  <button class="menu-btn btn-secondary" onclick="showScreen('settingsScreen')">⚙ Настройки</button>
+  <div class="menu-record">Рекорд: <span id="menuBest">0</span></div>
+</div>
+
+<!-- ===== ЭКРАН ИГРЫ ===== -->
+<div id="gameScreen" class="screen">
+  <canvas id="gameCanvas"></canvas>
+  <div id="gameUI">
+    <div class="score-display" id="scoreDisplay">0</div>
+    <button class="pause-btn" onclick="togglePause()">⏸</button>
+  </div>
+  <div class="powerup-display" id="powerupDisplay"></div>
+
+  <!-- Пауза -->
+  <div id="pauseOverlay">
+    <div class="pause-title">⏸ Пауза</div>
+    <button class="menu-btn btn-play" onclick="togglePause()">▶ Продолжить</button>
+    <button class="menu-btn btn-secondary" onclick="quitToMenu()" style="margin-top:10px">🏠 В меню</button>
+  </div>
+</div>
+
+<!-- ===== GAME OVER ===== -->
+<div id="gameOverScreen" class="screen">
+  <div class="go-title">Игра окончена</div>
+  <div class="go-score" id="goScore">0</div>
+  <div class="go-best">Лучший: <span id="goBest">0</span></div>
+  <button class="menu-btn btn-play" onclick="startGame()">🔄 Заново</button>
+  <button class="menu-btn btn-secondary" onclick="showScreen('menuScreen')" style="margin-top:10px">🏠 В меню</button>
+</div>
+
+<!-- ===== ТОП-10 ===== -->
+<div id="top10Screen" class="screen">
+  <div class="screen-header">
+    <button class="back-btn" onclick="showScreen('menuScreen')">←</button>
+    <div class="screen-title">🏆 Топ-10</div>
+  </div>
+  <div class="top10-list" id="top10List"></div>
+</div>
+
+<!-- ===== СКИНЫ ===== -->
+<div id="skinsScreen" class="screen">
+  <div class="screen-header">
+    <button class="back-btn" onclick="showScreen('menuScreen')">←</button>
+    <div class="screen-title">👕 Скины</div>
+  </div>
+  <div class="skins-grid" id="skinsGrid"></div>
+  <div style="margin-top:20px; font-size:13px; color:#5a5560;">🔒 Новые скины скоро!</div>
+</div>
+
+<!-- ===== НАСТРОЙКИ ===== -->
+<div id="settingsScreen" class="screen">
+  <div class="screen-header">
+    <button class="back-btn" onclick="showScreen('menuScreen')">←</button>
+    <div class="screen-title">⚙ Настройки</div>
+  </div>
+
+  <div class="settings-group">
+    <div class="settings-label">🔊 Громкость музыки</div>
+    <div class="slider-row">
+      <span class="slider-icon">🎵</span>
+      <input type="range" id="musicVolume" min="0" max="100" value="50" oninput="updateMusicVolume(this.value)">
+      <span class="slider-val" id="musicVolVal">50%</span>
+    </div>
+  </div>
+
+  <div class="settings-group">
+    <div class="settings-label">🔉 Громкость эффектов</div>
+    <div class="slider-row">
+      <span class="slider-icon">💥</span>
+      <input type="range" id="sfxVolume" min="0" max="100" value="70" oninput="updateSfxVolume(this.value)">
+      <span class="slider-val" id="sfxVolVal">70%</span>
+    </div>
+  </div>
+
+  <div class="settings-group">
+    <div class="settings-label">🎨 Фон игры</div>
+    <div class="bg-selector" id="bgSelector"></div>
+  </div>
+
+  <div class="settings-group">
+    <div class="settings-label">⚙ Управление</div>
+    <div class="setting-switch">
+      <span class="switch-label">Гироскоп (наклон)</span>
+      <div class="switch-toggle on" id="gyroToggle" onclick="toggleGyro()"></div>
+    </div>
+    <div class="setting-switch">
+      <span class="switch-label">Вибрация</span>
+      <div class="switch-toggle on" id="vibroToggle" onclick="toggleVibro()"></div>
+    </div>
+  </div>
+
+  <div class="settings-group">
+    <div class="settings-label">ℹ️ О игре</div>
+    <div style="background:rgba(255,255,255,0.06); padding:16px; border-radius:14px; font-size:13px; color:#8a7e6b; line-height:1.6;">
+      <b style="color:#c8b89a">Dashagames</b> — раннер внутри Telegram.<br>
+      Уклоняйтесь от препятствий, собирайте усиления и бейте рекорды!<br><br>
+      🎮 <b style="color:#c8b89a">Управление:</b> наклоняйте телефон для поворота персонажа<br>
+      📱 Работает в Telegram Web App<br><br>
+      Версия 1.0.0
+    </div>
+  </div>
+</div>
+
+<script>
+// ============================================
+// ===== TELEGRAM WEB APP INIT =====
+// ============================================
+const tg = window.Telegram?.WebApp;
+if (tg) {
+  tg.ready();
+  tg.expand();
+  tg.setHeaderColor('#2c2c3a');
+  tg.setBackgroundColor('#2c2c3a');
+}
+
+function getTgUser() {
+  if (tg?.initDataUnsafe?.user) {
+    return {
+      id: tg.initDataUnsafe.user.id,
+      username: tg.initDataUnsafe.user.username || tg.initDataUnsafe.user.first_name || 'Игрок',
+      first_name: tg.initDataUnsafe.user.first_name || 'Игрок'
+    };
+  }
+  return { id: 'local_' + Date.now(), username: 'Игрок_' + Math.floor(Math.random()*1000), first_name: 'Игрок' };
+}
+
+const user = getTgUser();
+
+// ============================================
+// ===== СОСТОЯНИЕ ИГРЫ =====
+// ============================================
+const STORAGE_KEY = 'dashagames_data';
+let gameData = loadData();
+
+function defaultData() {
+  return {
+    bestScore: 0,
+    leaderboard: [],
+    settings: {
+      musicVolume: 50,
+      sfxVolume: 70,
+      bgIndex: 0,
+      gyroEnabled: true,
+      vibroEnabled: true
+    },
+    selectedSkin: 0,
+    skins: [
+      { id: 0, name: 'Стандарт', emoji: '🏃', unlocked: true },
+      { id: 1, name: 'Повар', emoji: '👨‍🍳', unlocked: false },
+      { id: 2, name: 'Ниндзя', emoji: '🥷', unlocked: false },
+      { id: 3, name: 'Космонавт', emoji: '🧑‍🚀', unlocked: false },
+      { id: 4, name: 'Робот', emoji: '🤖', unlocked: false },
+      { id: 5, name: 'Призрак', emoji: '👻', unlocked: false },
+    ]
+  };
+}
+
+function loadData() {
+  try {
+    const d = JSON.parse(localStorage.getItem(STORAGE_KEY));
+    if (d) return { ...defaultData(), ...d };
+  } catch(e) {}
+  return defaultData();
+}
+
+function saveData() {
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(gameData));
+}
+
+// ============================================
+// ===== ФОНОВЫЕ ТЕМЫ =====
+// ============================================
+const bgThemes = [
+  { name: 'Ночь', sky: '#2c2c3a', ground: '#3a3a50', road: '#252535', accent: '#4a4a60' },
+  { name: 'Закат', sky: '#3a2a3a', ground: '#4a3540', road: '#2f2530', accent: '#5a4050' },
+  { name: 'Лес', sky: '#2a3a2c', ground: '#354a38', road: '#203022', accent: '#405a45' },
+  { name: 'Океан', sky: '#2a3040', ground: '#354050', road: '#202530', accent: '#405060' },
+  { name: 'Пустыня', sky: '#3a3530', ground: '#4a4538', road: '#302a25', accent: '#5a5548' },
+];
+
+let currentBg = bgThemes[gameData.settings.bgIndex] || bgThemes[0];
+
+// ============================================
+// ===== ПРЕПЯТСТВИЯ И УСИЛЕНИЯ =====
+// ============================================
+const obstacles = [
+  { emoji: '🪨', w: 40, h: 40 },
+  { emoji: '🌵', w: 35, h: 50 },
+  { emoji: '🚧', w: 50, h: 40 },
+  { emoji: '📦', w: 38, h: 38 },
+  { emoji: '🔥', w: 36, h: 45 },
+  { emoji: '💣', w: 35, h: 35 },
+  { emoji: '🧱', w: 45, h: 30 },
+  { emoji: '🪵', w: 50, h: 25 },
+];
+
+const powerups = [
+  { emoji: '🛡️', name: 'Щит!', duration: 5000, color: '#6da4c8' },
+  { emoji: '⭐', name: 'x2 очки!', duration: 8000, color: '#f0c040' },
+  { emoji: '🐢', name: 'Замедление!', duration: 4000, color: '#7ac86d' },
+  { emoji: '🧲', name: 'Магнит!', duration: 6000, color: '#c86dc8' },
+  { emoji: '🍕', name: '+50 очков!', duration: 0, color: '#f0a040' },
+  { emoji: '💎', name: '+100 очков!', duration: 0, color: '#6dc8f0' },
+];
+
+// ============================================
+// ===== ЗВУКОВАЯ СИСТЕМА =====
+// ============================================
+let audioCtx = null;
+let musicGain = null;
+let sfxGain = null;
+let musicOsc = null;
+let musicPlaying = false;
+
+function initAudio() {
+  if (audioCtx) return;
+  audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+  musicGain = audioCtx.createGain();
+  sfxGain = audioCtx.createGain();
+  musicGain.gain.value = gameData.settings.musicVolume / 100 * 0.3;
+  sfxGain.gain.value = gameData.settings.sfxVolume / 100;
+  musicGain.connect(audioCtx.destination);
+  sfxGain.connect(audioCtx.destination);
+}
+
+// Простая фоновая музыка через осцилляторы
+function startMusic() {
+  if (!audioCtx) initAudio();
+  if (audioCtx.state === 'suspended') audioCtx.resume();
+  if (musicPlaying) return;
+  musicPlaying = true;
+  playMusicLoop();
+}
+
+function stopMusic() {
+  musicPlaying = false;
+  if (musicOsc) {
+    try { musicOsc.stop(); } catch(e) {}
+    musicOsc = null;
+  }
+}
+
+function playMusicLoop() {
+  if (!musicPlaying || !audioCtx) return;
+
+  // Простая мелодия
+  const notes = [261.63, 293.66, 329.63, 349.23, 392.00, 349.23, 329.63, 293.66];
+  const tempo = 0.35;
+  let noteIndex = 0;
+
+  function playNote() {
+    if (!musicPlaying || !audioCtx) return;
+    const osc = audioCtx.createOscillator();
+    const env = audioCtx.createGain();
+    osc.type = 'sine';
+    osc.frequency.value = notes[noteIndex % notes.length];
+    env.gain.setValueAtTime(0.15, audioCtx.currentTime);
+    env.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + tempo * 0.9);
+    osc.connect(env);
+    env.connect(musicGain);
+    osc.start();
+    osc.stop(audioCtx.currentTime + tempo);
+    noteIndex++;
+    musicOsc = osc;
+    setTimeout(playNote, tempo * 1000);
+  }
+  playNote();
+}
+
+function playSfx(type) {
+  if (!audioCtx) initAudio();
+  if (audioCtx.state === 'suspended') audioCtx.resume();
+  const vol = gameData.settings.sfxVolume / 100;
+  if (vol === 0) return;
+
+  const osc = audioCtx.createOscillator();
+  const env = audioCtx.createGain();
+  osc.connect(env);
+  env.connect(sfxGain);
+
+  if (type === 'hit') {
+    osc.type = 'sawtooth';
+    osc.frequency.setValueAtTime(200, audioCtx.currentTime);
+    osc.frequency.exponentialRampToValueAtTime(80, audioCtx.currentTime + 0.2);
+    env.gain.setValueAtTime(vol * 0.5, audioCtx.currentTime);
+    env.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.2);
+    osc.start(); osc.stop(audioCtx.currentTime + 0.2);
+  } else if (type === 'powerup') {
+    osc.type = 'sine';
+    osc.frequency.setValueAtTime(400, audioCtx.currentTime);
+    osc.frequency.exponentialRampToValueAtTime(800, audioCtx.currentTime + 0.15);
+    env.gain.setValueAtTime(vol * 0.4, audioCtx.currentTime);
+    env.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.2);
+    osc.start(); osc.stop(audioCtx.currentTime + 0.2);
+  } else if (type === 'score') {
+    osc.type = 'sine';
+    osc.frequency.setValueAtTime(600, audioCtx.currentTime);
+    osc.frequency.setValueAtTime(800, audioCtx.currentTime + 0.05);
+    env.gain.setValueAtTime(vol * 0.3, audioCtx.currentTime);
+    env.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.1);
+    osc.start(); osc.stop(audioCtx.currentTime + 0.1);
+  }
+}
+
+// Для использования СВОЕЙ музыки:
+// 1. Положите файл music.mp3 рядом с index.html
+// 2. Раскомментируйте код ниже и закомментируйте startMusic() выше
+/*
+let bgMusic = new Audio('music.mp3');
+bgMusic.loop = true;
+bgMusic.volume = gameData.settings.musicVolume / 100;
+
+function startMusic() { bgMusic.play().catch(()=>{}); }
+function stopMusic() { bgMusic.pause(); }
+function updateMusicVolume(v) { bgMusic.volume = v / 100; }
+*/
+
+function updateMusicVolume(val) {
+  gameData.settings.musicVolume = parseInt(val);
+  document.getElementById('musicVolVal').textContent = val + '%';
+  if (musicGain) musicGain.gain.value = val / 100 * 0.3;
+  saveData();
+}
+
+function updateSfxVolume(val) {
+  gameData.settings.sfxVolume = parseInt(val);
+  document.getElementById('sfxVolVal').textContent = val + '%';
+  if (sfxGain) sfxGain.gain.value = val / 100;
+  saveData();
+}
+
+// ============================================
+// ===== ГИРОСКОП =====
+// ============================================
+let deviceAngle = 0;
+let gyroAvailable = false;
+
+function requestGyro() {
+  if (typeof DeviceOrientationEvent !== 'undefined' &&
+      typeof DeviceOrientationEvent.requestPermission === 'function') {
+    DeviceOrientationEvent.requestPermission().then(state => {
+      if (state === 'granted') setupGyro();
+    }).catch(console.error);
+  } else {
+    setupGyro();
+  }
+}
+
+function setupGyro() {
+  window.addEventListener('deviceorientation', (e) => {
+    if (e.gamma !== null) {
+      deviceAngle = e.gamma; // -90 to 90
+      gyroAvailable = true;
+    }
+  });
+}
+
+requestGyro();
+
+// ============================================
+// ===== ИГРОВОЙ ДВИЖОК =====
+// ============================================
+const canvas = document.getElementById('gameCanvas');
+const ctx = canvas.getContext('2d');
+
+let gameRunning = false;
+let gamePaused = false;
+let score = 0;
+let speed = 3;
+let baseSpeed = 3;
+let maxSpeed = 10;
+let player = {};
+let obstacleList = [];
+let powerupList = [];
+let particles = [];
+let roadOffset = 0;
+let shieldActive = false;
+let doubleScore = false;
+let slowActive = false;
+let magnetActive = false;
+let powerupTimers = {};
+let lastObstacleTime = 0;
+let lastPowerupTime = 0;
+let animFrame = 0;
+let touchStartX = 0;
+
+function resizeCanvas() {
+  canvas.width = window.innerWidth * devicePixelRatio;
+  canvas.height = window.innerHeight * devicePixelRatio;
+  canvas.style.width = window.innerWidth + 'px';
+  canvas.style.height = window.innerHeight + 'px';
+  ctx.scale(devicePixelRatio, devicePixelRatio);
+}
+
+window.addEventListener('resize', resizeCanvas);
+
+function initPlayer() {
+  const skin = gameData.skins[gameData.selectedSkin] || gameData.skins[0];
+  player = {
+    x: window.innerWidth / 2,
+    y: window.innerHeight * 0.75,
+    w: 40,
+    h: 40,
+    targetX: window.innerWidth / 2,
+    skin: skin,
+    angle: 0,
+    shield: false,
+    bobPhase: 0
+  };
+}
+
+function spawnObstacle() {
+  const type = obstacles[Math.floor(Math.random() * obstacles.length)];
+  const laneWidth = window.innerWidth * 0.7;
+  const laneStart = (window.innerWidth - laneWidth) / 2;
+  const x = laneStart + Math.random() * laneWidth;
+
+  obstacleList.push({
+    x: x,
+    y: -50,
+    w: type.w,
+    h: type.h,
+    emoji: type.emoji,
+    rotation: (Math.random() - 0.5) * 0.3
+  });
+}
+
+function spawnPowerup() {
+  const type = powerups[Math.floor(Math.random() * powerups.length)];
+  const laneWidth = window.innerWidth * 0.7;
+  const laneStart = (window.innerWidth - laneWidth) / 2;
+  const x = laneStart + Math.random() * laneWidth;
+
+  powerupList.push({
+    x: x,
+    y: -50,
+    w: 35,
+    h: 35,
+    emoji: type.emoji,
+    name: type.name,
+    duration: type.duration,
+    color: type.color,
+    phase: 0
+  });
+}
+
+function addParticles(x, y, color, count) {
+  for (let i = 0; i < count; i++) {
+    particles.push({
+      x, y,
+      vx: (Math.random() - 0.5) * 6,
+      vy: (Math.random() - 0.5) * 6,
+      life: 1,
+      decay: 0.02 + Math.random() * 0.03,
+      size: 3 + Math.random() * 4,
+      color: color
+    });
+  }
+}
+
+function applyPowerup(pu) {
+  playSfx('powerup');
+  const display = document.getElementById('powerupDisplay');
+  display.textContent = pu.emoji + ' ' + pu.name;
+  display.classList.add('show');
+  setTimeout(() => display.classList.remove('show'), 2000);
+
+  if (pu.duration === 0) {
+    // Мгновенный эффект
+    const bonus = pu.emoji === '🍕' ? 50 : 100;
+    score += bonus;
+  } else {
+    // Временный эффект
+    if (pu.emoji === '🛡️') shieldActive = true;
+    if (pu.emoji === '⭐') doubleScore = true;
+    if (pu.emoji === '🐢') slowActive = true;
+    if (pu.emoji === '🧲') magnetActive = true;
+
+    clearTimeout(powerupTimers[pu.emoji]);
+    powerupTimers[pu.emoji] = setTimeout(() => {
+      if (pu.emoji === '🛡️') shieldActive = false;
+      if (pu.emoji === '⭐') doubleScore = false;
+      if (pu.emoji === '🐢') slowActive = false;
+      if (pu.emoji === '🧲') magnetActive = false;
+    }, pu.duration);
+  }
+}
+
+function update(dt) {
+  if (gamePaused) return;
+  animFrame++;
+
+  // Ускорение
+  speed = Math.min(maxSpeed, baseSpeed + score * 0.003);
+  if (slowActive) speed *= 0.5;
+
+  // Управление гироскопом
+  if (gameData.settings.gyroEnabled && gyroAvailable) {
+    const sensitivity = 2.5;
+    player.targetX += deviceAngle * sensitivity * 0.1;
+  }
+
+  // Ограничение по экрану
+  const margin = 30;
+  player.targetX = Math.max(margin, Math.min(window.innerWidth - margin, player.targetX));
+  player.x += (player.targetX - player.x) * 0.12;
+
+  // Угол персонажа
+  player.angle = deviceAngle * 0.3;
+  player.bobPhase += dt * 8;
+
+  // Дорога
+  roadOffset += speed;
+
+  // Спавн препятствий
+  const obstacleInterval = Math.max(600, 1500 - score * 2);
+  if (Date.now() - lastObstacleTime > obstacleInterval) {
+    spawnObstacle();
+    lastObstacleTime = Date.now();
+    // Иногда два подряд
+    if (Math.random() < 0.25 + score * 0.0003) {
+      setTimeout(spawnObstacle, 200);
+    }
+  }
+
+  // Спавн усилений
+  if (Date.now() - lastPowerupTime > 4000 + Math.random() * 3000) {
+    spawnPowerup();
+    lastPowerupTime = Date.now();
+  }
+
+  // Обновление препятствий
+  for (let i = obstacleList.length - 1; i >= 0; i--) {
+    const obs = obstacleList[i];
+    obs.y += speed;
+    if (obs.y > window.innerHeight + 60) {
+      obstacleList.splice(i, 1);
+      continue;
+    }
+
+    // Коллизия
+    if (checkCollision(player, obs)) {
+      if (shieldActive) {
+        shieldActive = false;
+        addParticles(obs.x, obs.y, '#6da4c8', 12);
+        obstacleList.splice(i, 1);
+        playSfx('powerup');
+      } else {
+        gameOver();
+        return;
+      }
+    }
+  }
+
+  // Обновление усилений
+  for (let i = powerupList.length - 1; i >= 0; i--) {
+    const pu = powerupList[i];
+    pu.y += speed * 0.8;
+    pu.phase += dt * 4;
+
+    if (pu.y > window.innerHeight + 60) {
+      powerupList.splice(i, 1);
+      continue;
+    }
+
+    // Магнит
+    if (magnetActive) {
+      const dx = player.x - pu.x;
+      const dy = player.y - pu.y;
+      const dist = Math.sqrt(dx*dx + dy*dy);
+      if (dist < 150) {
+        pu.x += dx * 0.08;
+        pu.y += dy * 0.08;
+      }
+    }
+
+    if (checkCollision(player, pu)) {
+      applyPowerup(pu);
+      addParticles(pu.x, pu.y, pu.color, 15);
+      powerupList.splice(i, 1);
+    }
+  }
+
+  // Частицы
+  for (let i = particles.length - 1; i >= 0; i--) {
+    const p = particles[i];
+    p.x += p.vx;
+    p.y += p.vy;
+    p.life -= p.decay;
+    if (p.life <= 0) particles.splice(i, 1);
+  }
+
+  // Счёт
+  score += doubleScore ? 2 : 1;
+  document.getElementById('scoreDisplay').textContent = score;
+}
+
+function checkCollision(a, b) {
+  const padding = 6;
+  return Math.abs(a.x - b.x) < (a.w/2 + b.w/2 - padding) &&
+         Math.abs(a.y - b.y) < (a.h/2 + b.h/2 - padding);
+}
+
+function draw() {
+  const W = window.innerWidth;
+  const H = window.innerHeight;
+
+  ctx.clearRect(0, 0, W, H);
+
+  // Фон
+  ctx.fillStyle = currentBg.sky;
+  ctx.fillRect(0, 0, W, H);
+
+  // Звёзды
+  ctx.fillStyle = 'rgba(255,255,255,0.15)';
+  for (let i = 0; i < 30; i++) {
+    const sx = (i * 137.5 + roadOffset * 0.1) % W;
+    const sy = (i * 97.3) % (H * 0.5);
+    const ss = 1 + (i % 3);
+    ctx.beginPath();
+    ctx.arc(sx, sy, ss, 0, Math.PI * 2);
+    ctx.fill();
+  }
+
+  // Дорога
+  const roadW = W * 0.75;
+  const roadX = (W - roadW) / 2;
+  ctx.fillStyle = currentBg.road;
+  ctx.fillRect(roadX, 0, roadW, H);
+
+  // Бордюры
+  ctx.fillStyle = currentBg.accent;
+  ctx.fillRect(roadX - 3, 0, 3, H);
+  ctx.fillRect(roadX + roadW, 0, 3, H);
+
+  // Разметка
+  ctx.strokeStyle = 'rgba(255,255,255,0.08)';
+  ctx.lineWidth = 2;
+  ctx.setLineDash([20, 20]);
+  ctx.lineDashOffset = -roadOffset;
+  ctx.beginPath();
+  ctx.moveTo(W / 2, 0);
+  ctx.lineTo(W / 2, H);
+  ctx.stroke();
+  ctx.setLineDash([]);
+
+  // Препятствия
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  for (const obs of obstacleList) {
+    ctx.save();
+    ctx.translate(obs.x, obs.y);
+    ctx.rotate(obs.rotation);
+    ctx.font = `${obs.w}px serif`;
+    ctx.fillText(obs.emoji, 0, 0);
+    ctx.restore();
+  }
+
+  // Усиления
+  for (const pu of powerupList) {
+    ctx.save();
+    ctx.translate(pu.x, pu.y);
+    const scale = 1 + Math.sin(pu.phase) * 0.1;
+    ctx.scale(scale, scale);
+    // Свечение
+    ctx.shadowColor = pu.color;
+    ctx.shadowBlur = 15;
+    ctx.font = `${pu.w}px serif`;
+    ctx.fillText(pu.emoji, 0, 0);
+    ctx.shadowBlur = 0;
+    ctx.restore();
+  }
+
+  // Персонаж
+  ctx.save();
+  ctx.translate(player.x, player.y + Math.sin(player.bobPhase) * 3);
+  ctx.rotate(player.angle * Math.PI / 180);
+
+  // Тень
+  ctx.fillStyle = 'rgba(0,0,0,0.2)';
+  ctx.beginPath();
+  ctx.ellipse(0, player.h/2 + 5, player.w/2.5, 6, 0, 0, Math.PI * 2);
+  ctx.fill();
+
+  // Щит
+  if (shieldActive) {
+    ctx.strokeStyle = 'rgba(109,164,200,0.5)';
+    ctx.lineWidth = 3;
+    ctx.beginPath();
+    ctx.arc(0, 0, player.w/2 + 8, 0, Math.PI * 2);
+    ctx.stroke();
+  }
+
+  // Персонаж
+  ctx.font = `${player.w}px serif`;
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.fillText(player.skin.emoji, 0, 0);
+  ctx.restore();
+
+  // Частицы
+  for (const p of particles) {
+    ctx.globalAlpha = p.life;
+    ctx.fillStyle = p.color;
+    ctx.beginPath();
+    ctx.arc(p.x, p.y, p.size * p.life, 0, Math.PI * 2);
+    ctx.fill();
+  }
+  ctx.globalAlpha = 1;
+
+  // Индикаторы активных усилений
+  let indicatorY = 70;
+  if (shieldActive) {
+    ctx.fillStyle = 'rgba(109,164,200,0.7)';
+    ctx.font = '14px sans-serif';
+    ctx.textAlign = 'left';
+    ctx.fillText('🛡️', 10, indicatorY);
+    indicatorY += 20;
+  }
+  if (doubleScore) {
+    ctx.fillStyle = 'rgba(240,192,64,0.7)';
+    ctx.font = '14px sans-serif';
+    ctx.textAlign = 'left';
+    ctx.fillText('⭐ x2', 10, indicatorY);
+    indicatorY += 20;
+  }
+  if (slowActive) {
+    ctx.fillStyle = 'rgba(122,200,109,0.7)';
+    ctx.font = '14px sans-serif';
+    ctx.textAlign = 'left';
+    ctx.fillText('🐢', 10, indicatorY);
+    indicatorY += 20;
+  }
+  if (magnetActive) {
+    ctx.fillStyle = 'rgba(200,109,200,0.7)';
+    ctx.font = '14px sans-serif';
+    ctx.textAlign = 'left';
+    ctx.fillText('🧲', 10, indicatorY);
+  }
+}
+
+function gameLoop() {
+  if (!gameRunning) return;
+  const now = performance.now();
+  if (!gameLoop.lastTime) gameLoop.lastTime = now;
+  const dt = Math.min((now - gameLoop.lastTime) / 1000, 0.05);
+  gameLoop.lastTime = now;
+
+  update(dt);
+  draw();
+
+  if (gameRunning) {
+    requestAnimationFrame(gameLoop);
+  }
+}
+
+function startGame() {
+  resizeCanvas();
+  showScreen('gameScreen');
+  document.getElementById('pauseOverlay').classList.remove('active');
+
+  score = 0;
+  speed = baseSpeed;
+  obstacleList = [];
+  powerupList = [];
+  particles = [];
+  shieldActive = false;
+  doubleScore = false;
+  slowActive = false;
+  magnetActive = false;
+  powerupTimers = {};
+  lastObstacleTime = Date.now();
+  lastPowerupTime = Date.now();
+  gamePaused = false;
+  gameRunning = true;
+  gameLoop.lastTime = null;
+
+  initPlayer();
+  startMusic();
+
+  document.getElementById('scoreDisplay').textContent = '0';
+
+  // Вибрация при старте
+  if (gameData.settings.vibroEnabled && navigator.vibrate) {
+    navigator.vibrate(30);
+  }
+
+  requestAnimationFrame(gameLoop);
+}
+
+function gameOver() {
+  gameRunning = false;
+  stopMusic();
+  playSfx('hit');
+
+  if (gameData.settings.vibroEnabled && navigator.vibrate) {
+    navigator.vibrate([50, 30, 50]);
+  }
+
+  // Сохранение рекорда
+  if (score > gameData.bestScore) {
+    gameData.bestScore = score;
+  }
+
+  // Добавление в лидерборд
+  const entry = {
+    name: user.username,
+    score: score,
+    id: user.id,
+    date: Date.now()
+  };
+  gameData.leaderboard.push(entry);
+  gameData.leaderboard.sort((a, b) => b.score - a.score);
+  gameData.leaderboard = gameData.leaderboard.slice(0, 10);
+
+  saveData();
+
+  document.getElementById('goScore').textContent = score;
+  document.getElementById('goBest').textContent = gameData.bestScore;
+
+  setTimeout(() => showScreen('gameOverScreen'), 500);
+}
+
+function togglePause() {
+  gamePaused = !gamePaused;
+  const overlay = document.getElementById('pauseOverlay');
+  overlay.classList.toggle('active', gamePaused);
+  if (!gamePaused) {
+    gameLoop.lastTime = null;
+    requestAnimationFrame(gameLoop);
+  }
+}
+
+function quitToMenu() {
+  gameRunning = false;
+  gamePaused = false;
+  stopMusic();
+  showScreen('menuScreen');
+}
+
+// ============================================
+// ===== УПРАВЛЕНИЕ КАСАНИЕМ (альтернатива гироскопу) =====
+// ============================================
+canvas.addEventListener('touchstart', (e) => {
+  touchStartX = e.touches[0].clientX;
+  player.targetX = touchStartX;
+}, { passive: true });
+
+canvas.addEventListener('touchmove', (e) => {
+  player.targetX = e.touches[0].clientX;
+}, { passive: true });
+
+// Клавиатура (для тестирования на ПК)
+window.addEventListener('keydown', (e) => {
+  if (e.key === 'ArrowLeft') player.targetX -= 20;
+  if (e.key === 'ArrowRight') player.targetX += 20;
+  if (e.key === 'Escape' && gameRunning) togglePause();
+});
+
+// ============================================
+// ===== НАВИГАЦИЯ =====
+// ============================================
+function showScreen(id) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+
+  if (id === 'menuScreen') {
+    document.getElementById('menuBest').textContent = gameData.bestScore;
+  }
+  if (id === 'top10Screen') renderTop10();
+  if (id === 'skinsScreen') renderSkins();
+  if (id === 'settingsScreen') renderSettings();
+}
+
+// ============================================
+// ===== ТОП-10 =====
+// ============================================
+function renderTop10() {
+  const list = document.getElementById('top10List');
+  const lb = gameData.leaderboard;
+
+  if (lb.length === 0) {
+    list.innerHTML = '<div class="top10-empty">Пока нет записей. Сыграйте первый раз!</div>';
+    return;
+  }
+
+  list.innerHTML = lb.map((entry, i) => {
+    const isYou = entry.id === user.id;
+    return `
+      <div class="top10-item ${isYou ? 'is-you' : ''}">
+        <div class="top10-rank">${i + 1}</div>
+        <div class="top10-name">${entry.name} ${isYou ? '(вы)' : ''}</div>
+        <div class="top10-score">${entry.score}</div>
+      </div>
+    `;
+  }).join('');
+}
+
+// ============================================
+// ===== СКИНЫ =====
+// ============================================
+function renderSkins() {
+  const grid = document.getElementById('skinsGrid');
+  grid.innerHTML = gameData.skins.map(skin => `
+    <div class="skin-card ${gameData.selectedSkin === skin.id ? 'selected' : ''} ${!skin.unlocked ? 'locked' : ''}"
+         onclick="selectSkin(${skin.id})">
+      <div class="skin-emoji">${skin.emoji}</div>
+      <div class="skin-name">${skin.name}</div>
+    </div>
+  `).join('');
+}
+
+function selectSkin(id) {
+  const skin = gameData.skins.find(s => s.id === id);
+  if (!skin || !skin.unlocked) {
+    // Вибрация — заблокировано
+    if (gameData.settings.vibroEnabled && navigator.vibrate) navigator.vibrate([20, 20, 20]);
+    return;
+  }
+  gameData.selectedSkin = id;
+  saveData();
+  renderSkins();
+  playSfx('score');
+}
+
+// ============================================
+// ===== НАСТРОЙКИ =====
+// ============================================
+function renderSettings() {
+  document.getElementById('musicVolume').value = gameData.settings.musicVolume;
+  document.getElementById('musicVolVal').textContent = gameData.settings.musicVolume + '%';
+  document.getElementById('sfxVolume').value = gameData.settings.sfxVolume;
+  document.getElementById('sfxVolVal').textContent = gameData.settings.sfxVolume + '%';
+  document.getElementById('gyroToggle').classList.toggle('on', gameData.settings.gyroEnabled);
+  document.getElementById('vibroToggle').classList.toggle('on', gameData.settings.vibroEnabled);
+
+  // Фон
+  const sel = document.getElementById('bgSelector');
+  sel.innerHTML = bgThemes.map((bg, i) => `
+    <div class="bg-option ${gameData.settings.bgIndex === i ? 'active' : ''}"
+         style="background: linear-gradient(135deg, ${bg.sky}, ${bg.accent});"
+         onclick="selectBg(${i})"
+         title="${bg.name}">
+    </div>
+  `).join('');
+}
+
+function selectBg(index) {
+  gameData.settings.bgIndex = index;
+  currentBg = bgThemes[index];
+  saveData();
+  renderSettings();
+}
+
+function toggleGyro() {
+  gameData.settings.gyroEnabled = !gameData.settings.gyroEnabled;
+  document.getElementById('gyroToggle').classList.toggle('on', gameData.settings.gyroEnabled);
+  saveData();
+}
+
+function toggleVibro() {
+  gameData.settings.vibroEnabled = !gameData.settings.vibroEnabled;
+  document.getElementById('vibroToggle').classList.toggle('on', gameData.settings.vibroEnabled);
+  saveData();
+}
+
+// ============================================
+// ===== ИНИЦИАЛИЗАЦИЯ =====
+// ============================================
+document.getElementById('menuBest').textContent = gameData.bestScore;
+resizeCanvas();
+
+// Разблокировка скинов за рекорды (пример)
+function checkSkinUnlocks() {
+  if (gameData.bestScore >= 100) gameData.skins[1].unlocked = true; // Повар
+  if (gameData.bestScore >= 300) gameData.skins[2].unlocked = true; // Ниндзя
+  if (gameData.bestScore >= 600) gameData.skins[3].unlocked = true; // Космонавт
+  if (gameData.bestScore >= 1000) gameData.skins[4].unlocked = true; // Робот
+  if (gameData.bestScore >= 1500) gameData.skins[5].unlocked = true; // Призрак
+}
+checkSkinUnlocks();
+saveData();
+
+</script>
+</body>
+</html>
